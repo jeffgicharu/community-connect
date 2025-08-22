@@ -1,0 +1,235 @@
+# Community Connect Services Docker Compose
+# This extends the base infrastructure docker-compose.yml to include backend services
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.services.yml up
+
+version: '3.8'
+
+services:
+  # ==============================================
+  # Core Service - User management and service listings
+  # ==============================================
+  core-service:
+    build:
+      context: ../backend/core-service
+      dockerfile: Dockerfile
+    container_name: community-connect-core-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${CORE_SPRING_PROFILES_ACTIVE:-local}
+      
+      # Database Configuration
+      DB_HOST: postgres-core
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_CORE_DB}
+      DB_USERNAME: ${POSTGRES_CORE_USER}
+      DB_PASSWORD: ${POSTGRES_CORE_PASSWORD}
+      
+      # JWT Configuration
+      JWT_SECRET: ${CORE_JWT_SECRET:-community-connect-super-secret-key-change-in-production-minimum-512-bits}
+      JWT_EXPIRATION: ${CORE_JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${CORE_JWT_REFRESH_EXPIRATION:-604800000}
+      
+      # Email Configuration
+      MAIL_HOST: ${CORE_MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${CORE_MAIL_PORT:-587}
+      MAIL_USERNAME: ${CORE_MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${CORE_MAIL_PASSWORD:-}
+      
+      # Cloudinary Configuration
+      CLOUDINARY_CLOUD_NAME: ${CORE_CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CORE_CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CORE_CLOUDINARY_API_SECRET:-}
+      
+      # CORS Configuration
+      CORS_ALLOWED_ORIGINS: ${CORE_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # Logging
+      LOG_LEVEL: ${CORE_LOG_LEVEL:-INFO}
+      SECURITY_LOG_LEVEL: ${CORE_SECURITY_LOG_LEVEL:-INFO}
+      
+      # Service URLs
+      TRANSACTION_SERVICE_URL: http://transaction-service:8082/api/v1
+      COMMUNICATION_SERVICE_URL: http://communication-service:8083/api/v1
+      
+    volumes:
+      - ../backend/core-service/logs:/app/logs
+    networks:
+      - community-connect-network
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==============================================
+  # Transaction Service - Credit management and transactions
+  # ==============================================
+  transaction-service:
+    build:
+      context: ../backend/transaction-service
+      dockerfile: Dockerfile
+    container_name: community-connect-transaction-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${TRANSACTION_SPRING_PROFILES_ACTIVE:-local}
+      
+      # Database Configuration
+      DB_HOST: postgres-transaction
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_TRANSACTION_DB}
+      DB_USERNAME: ${POSTGRES_TRANSACTION_USER}
+      DB_PASSWORD: ${POSTGRES_TRANSACTION_PASSWORD}
+      
+      # CORS Configuration
+      CORS_ALLOWED_ORIGINS: ${TRANSACTION_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # Transaction Configuration
+      DEFAULT_CREDIT_LIMIT: ${TRANSACTION_DEFAULT_CREDIT_LIMIT:-50}
+      NEW_USER_CREDITS: ${TRANSACTION_NEW_USER_CREDITS:-2}
+      MAX_PENDING_REQUESTS: ${TRANSACTION_MAX_PENDING_REQUESTS:-10}
+      REQUEST_EXPIRATION_DAYS: ${TRANSACTION_REQUEST_EXPIRATION_DAYS:-7}
+      
+      # Credit Configuration
+      MIN_CREDIT_BALANCE: ${TRANSACTION_MIN_CREDIT_BALANCE:-0}
+      MAX_CREDIT_BALANCE: ${TRANSACTION_MAX_CREDIT_BALANCE:-1000}
+      
+      # Matching Configuration
+      MATCHING_RADIUS_KM: ${TRANSACTION_MATCHING_RADIUS_KM:-10}
+      MAX_MATCHES: ${TRANSACTION_MAX_MATCHES:-10}
+      
+      # Logging
+      LOG_LEVEL: ${TRANSACTION_LOG_LEVEL:-INFO}
+      SECURITY_LOG_LEVEL: ${TRANSACTION_SECURITY_LOG_LEVEL:-INFO}
+      
+      # Service URLs
+      CORE_SERVICE_URL: http://core-service:8081/api/v1
+      COMMUNICATION_SERVICE_URL: http://communication-service:8083/api/v1
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DATABASE: 0
+      
+      # RabbitMQ Configuration
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_VIRTUAL_HOST: /
+      
+    volumes:
+      - ../backend/transaction-service/logs:/app/logs
+    networks:
+      - community-connect-network
+    depends_on:
+      postgres-transaction:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/v1/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==============================================
+  # Communication Service - Messaging and notifications
+  # ==============================================
+  communication-service:
+    build:
+      context: ../backend/communication-service
+      dockerfile: Dockerfile
+    container_name: community-connect-communication-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${COMMUNICATION_SPRING_PROFILES_ACTIVE:-local}
+      
+      # MongoDB Configuration
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_DATABASE: ${MONGO_INITDB_DATABASE}
+      MONGO_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      
+      # CORS Configuration
+      CORS_ALLOWED_ORIGINS: ${COMMUNICATION_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # WebSocket Configuration
+      WS_ALLOWED_ORIGINS: ${COMMUNICATION_WS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # Messaging Configuration
+      MAX_MESSAGE_LENGTH: ${COMMUNICATION_MAX_MESSAGE_LENGTH:-2000}
+      MESSAGE_RETENTION_DAYS: ${COMMUNICATION_MESSAGE_RETENTION_DAYS:-90}
+      MAX_PARTICIPANTS: ${COMMUNICATION_MAX_PARTICIPANTS:-2}
+      
+      # Notification Configuration
+      NOTIFICATION_RETENTION_DAYS: ${COMMUNICATION_NOTIFICATION_RETENTION_DAYS:-30}
+      NOTIFICATION_BATCH_SIZE: ${COMMUNICATION_NOTIFICATION_BATCH_SIZE:-100}
+      MAX_RETRY_ATTEMPTS: ${COMMUNICATION_MAX_RETRY_ATTEMPTS:-3}
+      
+      # Email Configuration
+      EMAIL_FROM: ${COMMUNICATION_EMAIL_FROM:-noreply@communityconnect.co.ke}
+      EMAIL_FROM_NAME: ${COMMUNICATION_EMAIL_FROM_NAME:-Community Connect}
+      EMAIL_TEMPLATE_BASE_URL: ${COMMUNICATION_EMAIL_TEMPLATE_BASE_URL:-http://localhost:3000}
+      
+      # Logging
+      LOG_LEVEL: ${COMMUNICATION_LOG_LEVEL:-INFO}
+      SECURITY_LOG_LEVEL: ${COMMUNICATION_SECURITY_LOG_LEVEL:-INFO}
+      MONGO_LOG_LEVEL: ${COMMUNICATION_MONGO_LOG_LEVEL:-WARN}
+      
+      # Service URLs
+      CORE_SERVICE_URL: http://core-service:8081/api/v1
+      TRANSACTION_SERVICE_URL: http://transaction-service:8082/api/v1
+      
+      # Redis Configuration (different database for sessions)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DATABASE: 1
+      
+      # RabbitMQ Configuration
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_VIRTUAL_HOST: /
+      
+    volumes:
+      - ../backend/communication-service/logs:/app/logs
+    networks:
+      - community-connect-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/api/v1/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# Extend existing networks from base compose file
+networks:
+  community-connect-network:
+    external: true

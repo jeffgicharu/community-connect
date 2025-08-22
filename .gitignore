@@ -54,6 +54,8 @@ out/
 .env.production.local
 # Infrastructure environment file
 infrastructure/.env
+# Service environment files
+backend/*/.env
 # Keep example files
 !.env.example
 !.env.local.example
