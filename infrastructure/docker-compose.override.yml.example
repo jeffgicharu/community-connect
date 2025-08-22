@@ -1,0 +1,123 @@
+# Docker Compose Override Example
+# Copy this file to docker-compose.override.yml and customize for your local development needs
+# This file allows you to override or extend the main docker-compose.yml without modifying it
+
+version: '3.8'
+
+services:
+  # ==============================================
+  # Example: Enable Elasticsearch (uncomment to use)
+  # ==============================================
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+  #   container_name: community-connect-elasticsearch
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #   volumes:
+  #     - elasticsearch_data:/usr/share/elasticsearch/data
+  #   networks:
+  #     - community-connect-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+
+  # ==============================================
+  # Example: Add pgAdmin for PostgreSQL management
+  # ==============================================
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: community-connect-pgadmin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:80"
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@communityconnect.local
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #     PGADMIN_CONFIG_SERVER_MODE: 'False'
+  #   volumes:
+  #     - pgadmin_data:/var/lib/pgadmin
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - postgres-core
+  #     - postgres-transaction
+
+  # ==============================================
+  # Example: Add MongoDB Express for MongoDB management
+  # ==============================================
+  # mongo-express:
+  #   image: mongo-express:latest
+  #   container_name: community-connect-mongo-express
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+  #     ME_CONFIG_MONGODB_SERVER: mongodb
+  #     ME_CONFIG_BASICAUTH_USERNAME: admin
+  #     ME_CONFIG_BASICAUTH_PASSWORD: admin
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - mongodb
+
+  # ==============================================
+  # Example: Add Redis Commander for Redis management
+  # ==============================================
+  # redis-commander:
+  #   image: rediscommander/redis-commander:latest
+  #   container_name: community-connect-redis-commander
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8082:8081"
+  #   environment:
+  #     REDIS_HOSTS: local:redis:6379
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - redis
+
+  # ==============================================
+  # Example: Override service configurations
+  # ==============================================
+  
+  # Increase Redis memory limit
+  # redis:
+  #   command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  # Add custom PostgreSQL configuration
+  # postgres-core:
+  #   command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all
+
+  # Mount additional volumes for development
+  # postgres-core:
+  #   volumes:
+  #     - postgres_core_data:/var/lib/postgresql/data
+  #     - ./init-scripts/core-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+  #     - ./backups:/backups:rw  # Add backup directory
+
+# ==============================================
+# Additional volumes (uncomment if using above services)
+# ==============================================
+# volumes:
+#   elasticsearch_data:
+#     driver: local
+#   pgadmin_data:
+#     driver: local
+
+# ==============================================
+# Additional networks (if needed)
+# ==============================================
+# networks:
+#   external-network:
+#     external: true
