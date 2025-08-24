@@ -1,0 +1,42 @@
+# Core Service - Local Development Configuration
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/core_service_local
+    username: postgres
+    password: postgres
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  mail:
+    host: smtp.mailtrap.io
+    port: 2525
+    username: # Add your Mailtrap username for testing
+    password: # Add your Mailtrap password for testing
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Development-specific configuration
+app:
+  verification:
+    email:
+      expiration: 86400000 # 24 hours for easier testing
+    phone:
+      expiration: 3600000 # 1 hour for easier testing
+
+logging:
+  level:
+    com.communityconnect.core: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

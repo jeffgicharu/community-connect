@@ -1,0 +1,179 @@
+# Communication Service - Application Configuration
+# Spring Boot configuration with profiles for different environments
+
+spring:
+  application:
+    name: communication-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/communication_service}
+      username: ${MONGODB_USERNAME:}
+      password: ${MONGODB_PASSWORD:}
+      database: ${MONGODB_DATABASE:communication_service}
+  
+  # Security Configuration
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET:your-secret-key-here}
+      expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  
+  # Mail Configuration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8083}
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Management/Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Application Configuration
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+  
+  websocket:
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+    endpoint: /ws
+    topic-prefix: /topic
+    app-prefix: /app
+  
+  notifications:
+    email:
+      enabled: ${EMAIL_NOTIFICATIONS_ENABLED:true}
+      from-address: ${EMAIL_FROM_ADDRESS:noreply@communityconnect.com}
+      from-name: ${EMAIL_FROM_NAME:Community Connect}
+    push:
+      enabled: ${PUSH_NOTIFICATIONS_ENABLED:false}
+      fcm-server-key: ${FCM_SERVER_KEY:}
+  
+  messaging:
+    max-message-length: ${MAX_MESSAGE_LENGTH:1000}
+    message-history-days: ${MESSAGE_HISTORY_DAYS:30}
+    max-conversation-size: ${MAX_CONVERSATION_SIZE:10000}
+
+# External Service URLs
+external:
+  services:
+    core-service: ${CORE_SERVICE_URL:http://localhost:8081}
+    transaction-service: ${TRANSACTION_SERVICE_URL:http://localhost:8082}
+  
+  sms:
+    provider: ${SMS_PROVIDER:africas_talking}
+    africas-talking:
+      username: ${AFRICAS_TALKING_USERNAME:}
+      api-key: ${AFRICAS_TALKING_API_KEY:}
+      sender-id: ${SMS_SENDER_ID:CommunityConnect}
+
+# Logging Configuration
+logging:
+  level:
+    com.communityconnect.communication: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.springframework.data.mongodb: ${MONGODB_LOG_LEVEL:WARN}
+    org.springframework.messaging: ${WEBSOCKET_LOG_LEVEL:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/communication-service.log}
+
+# OpenAPI/Swagger Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  info:
+    title: Community Connect Communication Service API
+    description: Real-time messaging, notifications, and email
+    version: 1.0.0
+    contact:
+      name: Community Connect Team
+      email: dev@communityconnect.com
+
+---
+# Local Development Profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/communication_service_local
+
+logging:
+  level:
+    com.communityconnect.communication: DEBUG
+    org.springframework.web: INFO
+    org.springframework.messaging: DEBUG
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  data:
+    mongodb:
+      uri: mongodb://mongodb:27017/communication_service
+
+external:
+  services:
+    core-service: http://core-service:8081
+    transaction-service: http://transaction-service:8082
+
+logging:
+  level:
+    com.communityconnect.communication: INFO
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    com.communityconnect.communication: WARN
+    root: WARN

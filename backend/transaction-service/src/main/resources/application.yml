@@ -1,0 +1,195 @@
+# Transaction Service - Application Configuration
+# Spring Boot configuration with profiles for different environments
+
+spring:
+  application:
+    name: transaction-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # Database Configuration
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/transaction_service}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: TransactionServiceHikariCP
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+    open-in-view: false
+  
+  # Security Configuration
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET:your-secret-key-here}
+      expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  
+  # State Machine Configuration
+  statemachine:
+    redis:
+      enabled: ${REDIS_ENABLED:true}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8082}
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Management/Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Application Configuration
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+  
+  credits:
+    initial-balance: ${INITIAL_CREDIT_BALANCE:2}
+    welcome-bonus: ${WELCOME_CREDIT_BONUS:2}
+    max-balance: ${MAX_CREDIT_BALANCE:100}
+  
+  transactions:
+    expiration-hours: ${TRANSACTION_EXPIRATION_HOURS:24}
+    auto-complete-hours: ${AUTO_COMPLETE_HOURS:72}
+  
+  matching:
+    radius-km: ${MATCHING_RADIUS_KM:10}
+    max-results: ${MATCHING_MAX_RESULTS:20}
+
+# External Service URLs
+external:
+  services:
+    core-service: ${CORE_SERVICE_URL:http://localhost:8081}
+    communication-service: ${COMMUNICATION_SERVICE_URL:http://localhost:8083}
+
+# Logging Configuration
+logging:
+  level:
+    com.communityconnect.transaction: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.springframework.statemachine: ${STATEMACHINE_LOG_LEVEL:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/transaction-service.log}
+
+# OpenAPI/Swagger Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  info:
+    title: Community Connect Transaction Service API
+    description: Credit management, service requests, and transaction processing
+    version: 1.0.0
+    contact:
+      name: Community Connect Team
+      email: dev@communityconnect.com
+
+---
+# Local Development Profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+logging:
+  level:
+    com.communityconnect.transaction: DEBUG
+    org.springframework.web: INFO
+    org.springframework.statemachine: DEBUG
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  datasource:
+    url: jdbc:postgresql://postgres-transaction:5432/transaction_service
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+  
+  statemachine:
+    redis:
+      host: redis
+
+external:
+  services:
+    core-service: http://core-service:8081
+    communication-service: http://communication-service:8083
+
+logging:
+  level:
+    com.communityconnect.transaction: INFO
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    com.communityconnect.transaction: WARN
+    root: WARN

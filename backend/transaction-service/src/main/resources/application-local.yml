@@ -1,0 +1,45 @@
+# Transaction Service - Local Development Configuration
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/transaction_service_local
+    username: postgres
+    password: postgres
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  statemachine:
+    redis:
+      enabled: true
+      host: localhost
+      port: 6379
+      database: 1 # Use different database for local development
+
+# Development-specific configuration
+app:
+  credits:
+    initial-balance: 5 # More credits for testing
+    welcome-bonus: 5
+  
+  transactions:
+    expiration-hours: 168 # 7 days for easier testing
+    auto-complete-hours: 24 # 1 day for faster testing
+
+external:
+  services:
+    core-service: http://localhost:8081/api/v1
+    communication-service: http://localhost:8083/api/v1
+
+logging:
+  level:
+    com.communityconnect.transaction: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.statemachine: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

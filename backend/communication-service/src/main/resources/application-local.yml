@@ -1,0 +1,41 @@
+# Communication Service - Local Development Configuration
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/communication_service_local
+  
+  mail:
+    host: smtp.mailtrap.io
+    port: 2525
+    username: # Add your Mailtrap username for testing
+    password: # Add your Mailtrap password for testing
+
+# Development-specific configuration
+app:
+  notifications:
+    email:
+      enabled: true
+      from-address: dev@communityconnect.local
+      from-name: Community Connect (Dev)
+    push:
+      enabled: false # Disable push notifications in local development
+  
+  messaging:
+    max-message-length: 500 # Smaller limit for testing
+    message-history-days: 7 # Shorter retention for local development
+
+external:
+  services:
+    core-service: http://localhost:8081/api/v1
+    transaction-service: http://localhost:8082/api/v1
+  
+  sms:
+    provider: mock # Use mock SMS provider for local development
+
+logging:
+  level:
+    com.communityconnect.communication: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.messaging: DEBUG
