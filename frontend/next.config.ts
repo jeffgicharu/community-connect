@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@apollo/client'],
   
   // Webpack configuration
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) => {
+  webpack: (config, { isServer }) => {
     // Custom webpack config
     if (!isServer) {
       config.resolve.fallback = {
