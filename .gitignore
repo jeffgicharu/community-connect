@@ -130,6 +130,15 @@ docker-compose.override.yml
 volumes/
 logs/
 
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+
 # Database
 *.db
 *.sqlite
