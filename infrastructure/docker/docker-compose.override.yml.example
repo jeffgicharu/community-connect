@@ -1,0 +1,134 @@
+# Community Connect - Docker Compose Override Example
+# Copy this file to docker-compose.override.yml and customize for your local environment
+# This file allows you to override or extend the main docker-compose.yml without modifying it
+
+# Common use cases for override files:
+# - Custom port mappings for local development
+# - Development-specific volumes (like bind mounts for code)
+# - Different environment variables
+# - Additional services for debugging (like Adminer for database management)
+
+services:
+  # Override PostgreSQL Core with development settings
+  postgres-core:
+    # Example: Bind mount for custom PostgreSQL configuration
+    # volumes:
+    #   - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    #   - ./data/postgres-core:/var/lib/postgresql/data
+    
+    # Example: Custom port mapping to avoid conflicts
+    # ports:
+    #   - "15432:5432"
+    
+    # Example: Additional environment variables for development
+    # environment:
+    #   POSTGRES_DB: core_service_dev
+    #   POSTGRES_USER: dev_user
+    #   POSTGRES_PASSWORD: dev_password
+
+  # Override PostgreSQL Transaction with development settings
+  postgres-transaction:
+    # Example: Custom port mapping
+    # ports:
+    #   - "15433:5432"
+
+  # Override MongoDB with development settings
+  mongodb:
+    # Example: Bind mount for MongoDB data in development
+    # volumes:
+    #   - ./data/mongodb:/data/db
+    #   - ./data/mongodb-config:/data/configdb
+    
+    # Example: Custom port mapping
+    # ports:
+    #   - "27018:27017"
+
+  # Override Redis with development settings
+  redis:
+    # Example: Custom Redis configuration
+    # command: redis-server --requirepass dev_password --appendonly yes
+    
+    # Example: Bind mount for Redis data
+    # volumes:
+    #   - ./data/redis:/data
+
+  # Override RabbitMQ with development settings
+  rabbitmq:
+    # Example: Different credentials for development
+    # environment:
+    #   RABBITMQ_DEFAULT_USER: dev_admin
+    #   RABBITMQ_DEFAULT_PASS: dev_password
+    
+    # Example: Custom port mappings
+    # ports:
+    #   - "15672:5672"   # AMQP
+    #   - "25672:15672"  # Management UI
+
+  # Additional services for development (uncomment as needed)
+  
+  # Database administration tool
+  # adminer:
+  #   image: adminer:4.8.1
+  #   container_name: community-connect-adminer
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - postgres-core
+  #     - postgres-transaction
+
+  # MongoDB administration tool
+  # mongo-express:
+  #   image: mongo-express:1.0.0
+  #   container_name: community-connect-mongo-express
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+  #     ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+  #     ME_CONFIG_BASICAUTH: false
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - mongodb
+
+  # Redis administration tool
+  # redis-commander:
+  #   image: rediscommander/redis-commander:latest
+  #   container_name: community-connect-redis-commander
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8082:8081"
+  #   environment:
+  #     REDIS_HOSTS: local:redis:6379:0:redis123
+  #   networks:
+  #     - community-connect-network
+  #   depends_on:
+  #     - redis
+
+  # Mailhog for testing email functionality
+  # mailhog:
+  #   image: mailhog/mailhog:v1.0.1
+  #   container_name: community-connect-mailhog
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1025:1025"  # SMTP
+  #     - "8025:8025"  # Web UI
+  #   networks:
+  #     - community-connect-network
+
+# Example: Additional volumes for development
+# volumes:
+#   postgres_core_dev_data:
+#     driver: local
+#   postgres_transaction_dev_data:
+#     driver: local
+
+# Example: Additional networks if needed
+# networks:
+#   dev-network:
+#     driver: bridge

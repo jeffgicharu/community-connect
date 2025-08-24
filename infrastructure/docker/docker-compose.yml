@@ -1,0 +1,147 @@
+# Community Connect - Infrastructure Services
+# Docker Compose file following Docker's official best practices
+# Version: Compose Specification (latest)
+
+services:
+  # PostgreSQL for Core Service
+  postgres-core:
+    image: postgres:16-alpine
+    container_name: ${POSTGRES_CORE_CONTAINER:-community-connect-postgres-core}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_CORE_DB:-core_service}
+      POSTGRES_USER: ${POSTGRES_CORE_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CORE_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${POSTGRES_CORE_PORT:-5432}:5432"
+    volumes:
+      - postgres_core_data:/var/lib/postgresql/data
+      - ./init-scripts/core-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - community-connect-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CORE_USER:-postgres} -d ${POSTGRES_CORE_DB:-core_service}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # PostgreSQL for Transaction Service
+  postgres-transaction:
+    image: postgres:16-alpine
+    container_name: ${POSTGRES_TRANSACTION_CONTAINER:-community-connect-postgres-transaction}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_TRANSACTION_DB:-transaction_service}
+      POSTGRES_USER: ${POSTGRES_TRANSACTION_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_TRANSACTION_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${POSTGRES_TRANSACTION_PORT:-5433}:5432"
+    volumes:
+      - postgres_transaction_data:/var/lib/postgresql/data
+      - ./init-scripts/transaction-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - community-connect-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_TRANSACTION_USER:-postgres} -d ${POSTGRES_TRANSACTION_DB:-transaction_service}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # MongoDB for Communication Service
+  mongodb:
+    image: mongo:7.0
+    container_name: ${MONGODB_CONTAINER:-community-connect-mongodb}
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-communication_service}
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./init-scripts/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+    networks:
+      - community-connect-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    container_name: ${REDIS_CONTAINER:-community-connect-redis}
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - community-connect-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # RabbitMQ for Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ${RABBITMQ_CONTAINER:-community-connect-rabbitmq}
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-community-connect}
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"     # AMQP port
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672" # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      - community-connect-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+# Named volumes for data persistence
+volumes:
+  postgres_core_data:
+    driver: local
+    name: community-connect-postgres-core-data
+  postgres_transaction_data:
+    driver: local
+    name: community-connect-postgres-transaction-data
+  mongo_data:
+    driver: local
+    name: community-connect-mongo-data
+  mongo_config:
+    driver: local
+    name: community-connect-mongo-config
+  redis_data:
+    driver: local
+    name: community-connect-redis-data
+  rabbitmq_data:
+    driver: local
+    name: community-connect-rabbitmq-data
+
+# Custom network for service isolation
+networks:
+  community-connect-network:
+    driver: bridge
+    name: community-connect-network
