@@ -1,0 +1,300 @@
+# Community Connect - Development Override
+# This file provides development-specific configuration for hot reload and debugging
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # ================================
+  # BACKEND SERVICES - DEVELOPMENT
+  # ================================
+
+  # Core Service - Development Configuration
+  core-service:
+    build:
+      context: ../../backend/core-service
+      target: development  # Use development target in Dockerfile
+    environment:
+      # Override for development
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DEVTOOLS_RESTART_ENABLED: true
+      SPRING_DEVTOOLS_LIVERELOAD_ENABLED: true
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: true
+      LOGGING_LEVEL_COM_COMMUNITYCONNECT_CORE: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: INFO
+      JPA_DDL_AUTO: update
+    volumes:
+      # Mount source code for hot reload
+      - ../../backend/core-service/src:/app/src:ro
+      - ../../backend/core-service/pom.xml:/app/pom.xml:ro
+      - ../../backend/shared:/app/shared:ro
+      # Maven cache for faster builds
+      - maven_cache:/root/.m2/repository
+    ports:
+      # Expose debug port
+      - "${CORE_DEBUG_PORT:-5005}:5005"
+    command: >
+      java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 
+      -Dspring.devtools.restart.enabled=true 
+      -Dspring.devtools.restart.poll-interval=2s 
+      -Dspring.devtools.restart.quiet-period=1s 
+      -jar app.jar
+
+  # Transaction Service - Development Configuration
+  transaction-service:
+    build:
+      context: ../../backend/transaction-service
+      target: development
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DEVTOOLS_RESTART_ENABLED: true
+      SPRING_DEVTOOLS_LIVERELOAD_ENABLED: true
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: true
+      LOGGING_LEVEL_COM_COMMUNITYCONNECT_TRANSACTION: DEBUG
+      JPA_DDL_AUTO: update
+    volumes:
+      - ../../backend/transaction-service/src:/app/src:ro
+      - ../../backend/transaction-service/pom.xml:/app/pom.xml:ro
+      - ../../backend/shared:/app/shared:ro
+      - maven_cache:/root/.m2/repository
+    ports:
+      - "${TRANSACTION_DEBUG_PORT:-5006}:5006"
+    command: >
+      java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006 
+      -Dspring.devtools.restart.enabled=true 
+      -Dspring.devtools.restart.poll-interval=2s 
+      -Dspring.devtools.restart.quiet-period=1s 
+      -jar app.jar
+
+  # Communication Service - Development Configuration
+  communication-service:
+    build:
+      context: ../../backend/communication-service
+      target: development
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DEVTOOLS_RESTART_ENABLED: true
+      SPRING_DEVTOOLS_LIVERELOAD_ENABLED: true
+      LOGGING_LEVEL_COM_COMMUNITYCONNECT_COMMUNICATION: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEBSOCKET: DEBUG
+    volumes:
+      - ../../backend/communication-service/src:/app/src:ro
+      - ../../backend/communication-service/pom.xml:/app/pom.xml:ro
+      - ../../backend/shared:/app/shared:ro
+      - maven_cache:/root/.m2/repository
+    ports:
+      - "${COMMUNICATION_DEBUG_PORT:-5007}:5007"
+    command: >
+      java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007 
+      -Dspring.devtools.restart.enabled=true 
+      -Dspring.devtools.restart.poll-interval=2s 
+      -Dspring.devtools.restart.quiet-period=1s 
+      -jar app.jar
+
+  # ================================
+  # FRONTEND - DEVELOPMENT
+  # ================================
+
+  # Frontend - Development Configuration with Hot Reload
+  frontend:
+    build:
+      context: ../../frontend
+      target: development  # Use development target in Dockerfile
+      args:
+        NODE_ENV: development
+    environment:
+      # Development environment
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+      TURBO_DEV: true
+      
+      # API URLs for development (direct service access)
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:80/api
+      NEXT_PUBLIC_CORE_SERVICE_URL: http://localhost:8081/api/v1
+      NEXT_PUBLIC_TRANSACTION_SERVICE_URL: http://localhost:8082/api/v1
+      NEXT_PUBLIC_COMMUNICATION_SERVICE_URL: http://localhost:8083/api/v1
+      NEXT_PUBLIC_WS_URL: ws://localhost:8083/ws
+      NEXT_PUBLIC_GRAPHQL_URL: http://localhost:8081/graphql
+      
+      # Development flags
+      NEXT_PUBLIC_DEV_MODE: true
+      NEXT_PUBLIC_DEBUG: true
+    volumes:
+      # Mount source code for hot reload
+      - ../../frontend:/app:rw
+      - /app/node_modules  # Anonymous volume to avoid overwriting
+      - /app/.next        # Anonymous volume for Next.js build files
+    ports:
+      # Expose Next.js dev server port
+      - "${FRONTEND_DEV_PORT:-3001}:3000"
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+  # ================================
+  # INFRASTRUCTURE - DEVELOPMENT
+  # ================================
+
+  # PostgreSQL Core - Development Overrides
+  postgres-core:
+    environment:
+      # Development database settings
+      POSTGRES_DB: ${POSTGRES_CORE_DB:-core_service_dev}
+      POSTGRES_USER: ${POSTGRES_CORE_USER:-dev_user}
+      POSTGRES_PASSWORD: ${POSTGRES_CORE_PASSWORD:-dev_password}
+    ports:
+      # Expose PostgreSQL port for external access
+      - "${POSTGRES_CORE_DEV_PORT:-5434}:5432"
+    volumes:
+      # Mount development data
+      - postgres_core_dev_data:/var/lib/postgresql/data
+      - ../../backend/core-service/src/main/resources/db/migration:/docker-entrypoint-initdb.d/migrations:ro
+
+  # PostgreSQL Transaction - Development Overrides
+  postgres-transaction:
+    environment:
+      POSTGRES_DB: ${POSTGRES_TRANSACTION_DB:-transaction_service_dev}
+      POSTGRES_USER: ${POSTGRES_TRANSACTION_USER:-dev_user}
+      POSTGRES_PASSWORD: ${POSTGRES_TRANSACTION_PASSWORD:-dev_password}
+    ports:
+      - "${POSTGRES_TRANSACTION_DEV_PORT:-5435}:5432"
+    volumes:
+      - postgres_transaction_dev_data:/var/lib/postgresql/data
+      - ../../backend/transaction-service/src/main/resources/db/migration:/docker-entrypoint-initdb.d/migrations:ro
+
+  # MongoDB - Development Overrides
+  mongodb:
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-communication_service_dev}
+    ports:
+      - "${MONGODB_DEV_PORT:-27018}:27017"
+    volumes:
+      - mongo_dev_data:/data/db
+      - mongo_dev_config:/data/configdb
+
+  # Redis - Development Overrides
+  redis:
+    command: redis-server --requirepass ${REDIS_PASSWORD:-dev_redis_password} --appendonly yes --save 60 1
+    ports:
+      - "${REDIS_DEV_PORT:-6380}:6379"
+    volumes:
+      - redis_dev_data:/data
+
+  # RabbitMQ - Development Overrides
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dev_password}
+    ports:
+      - "${RABBITMQ_AMQP_DEV_PORT:-5673}:5672"
+      - "${RABBITMQ_MANAGEMENT_DEV_PORT:-15673}:15672"
+    volumes:
+      - rabbitmq_dev_data:/var/lib/rabbitmq
+
+  # Nginx - Development Configuration
+  nginx:
+    volumes:
+      # Mount development nginx config with hot reload support
+      - ../nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_dev_logs:/var/log/nginx
+    ports:
+      - "${NGINX_DEV_HTTP_PORT:-8080}:80"
+      - "${NGINX_DEV_HTTPS_PORT:-8443}:443"
+    depends_on:
+      # Remove health check dependencies for faster startup in dev
+      - core-service
+      - transaction-service
+      - communication-service
+      - frontend
+
+  # ================================
+  # ADDITIONAL DEVELOPMENT SERVICES
+  # ================================
+
+  # Database Administration Tool
+  adminer:
+    image: adminer:4.8.1
+    container_name: community-connect-adminer-dev
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    networks:
+      - community-connect-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres-core
+    depends_on:
+      - postgres-core
+      - postgres-transaction
+
+  # MongoDB Administration Tool
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: community-connect-mongo-express-dev
+    restart: unless-stopped
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8082}:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGODB_ROOT_USER:-admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGODB_ROOT_PASSWORD:-admin123}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USER:-admin}:${MONGODB_ROOT_PASSWORD:-admin123}@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    networks:
+      - community-connect-network
+    depends_on:
+      - mongodb
+
+  # Redis Administration Tool
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: community-connect-redis-commander-dev
+    restart: unless-stopped
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8083}:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD:-dev_redis_password}
+    networks:
+      - community-connect-network
+    depends_on:
+      - redis
+
+  # MailHog for Email Testing
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: community-connect-mailhog-dev
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"  # SMTP
+      - "${MAILHOG_WEB_PORT:-8025}:8025"   # Web UI
+    networks:
+      - community-connect-network
+
+# Development-specific volumes
+volumes:
+  # Development database volumes (separate from production)
+  postgres_core_dev_data:
+    driver: local
+    name: community-connect-postgres-core-dev-data
+  postgres_transaction_dev_data:
+    driver: local
+    name: community-connect-postgres-transaction-dev-data
+  mongo_dev_data:
+    driver: local
+    name: community-connect-mongo-dev-data
+  mongo_dev_config:
+    driver: local
+    name: community-connect-mongo-dev-config
+  redis_dev_data:
+    driver: local
+    name: community-connect-redis-dev-data
+  rabbitmq_dev_data:
+    driver: local
+    name: community-connect-rabbitmq-dev-data
+  nginx_dev_logs:
+    driver: local
+    name: community-connect-nginx-dev-logs
+  
+  # Maven cache for faster Java builds
+  maven_cache:
+    driver: local
+    name: community-connect-maven-cache
